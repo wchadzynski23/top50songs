@@ -1,0 +1,13 @@
+[Unit]
+Description=Gunicorn instance to serve Top 50 Songs application
+After=network.target
+
+[Service]
+User=www-data
+Group=www-data
+WorkingDirectory=/var/www/top50songs
+Environment="PATH=/var/www/top50songs/venv/bin"
+ExecStart=/var/www/top50songs/venv/bin/gunicorn --workers 3 --bind unix:top50songs.sock -m 007 wsgi:app
+
+[Install]
+WantedBy=multi-user.target
