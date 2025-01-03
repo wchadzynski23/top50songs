@@ -1,0 +1,270 @@
+{% extends "admin_base.html" %}
+
+{% block content %}
+<div class="admin-songs">
+    <div class="admin-controls">
+        <h2>Manage Songs</h2>
+        <a href="{{ url_for('admin_settings') }}" class="btn btn-primary">Edit Hero Section</a>
+    </div>
+
+    <div class="songs-grid">
+        {% for song in songs %}
+        <div class="song-card" id="song-{{ song.id }}">
+            <div class="song-rank">#{{ song.rank }}</div>
+            {% if song.cover_image %}
+            <div class="song-cover">
+                <img src="{{ url_for('static', filename='uploads/covers/' + song.cover_image) }}" alt="Cover for {{ song.title }}">
+            </div>
+            {% else %}
+            <div class="song-cover no-image">
+                <div class="upload-placeholder">
+                    <span>No Cover Image</span>
+                </div>
+            </div>
+            {% endif %}
+            <div class="song-info">
+                <input type="text" class="song-artist" value="{{ song.artist }}" data-original="{{ song.artist }}" placeholder="Artist">
+                <input type="text" class="song-title" value="{{ song.title }}" data-original="{{ song.title }}" placeholder="Title">
+                <textarea class="song-description" data-original="{{ song.description }}" placeholder="Description">{{ song.description }}</textarea>
+                <input type="text" class="song-link" value="{{ song.link }}" data-original="{{ song.link }}" placeholder="Spotify Link">
+                <div class="song-actions">
+                    <button class="btn btn-primary save-changes" style="display: none;">Save Changes</button>
+                    <button class="btn btn-secondary" onclick="uploadCover({{ song.id }})">Upload Cover</button>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+
+<style>
+.admin-songs {
+    padding: 2rem;
+    background: rgba(30, 41, 59, 0.5);
+    border-radius: 1rem;
+    backdrop-filter: blur(10px);
+}
+
+.admin-controls {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 2rem;
+}
+
+.admin-controls h2 {
+    font-size: 1.5rem;
+    font-weight: 600;
+}
+
+.songs-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 2rem;
+}
+
+.song-card {
+    position: relative;
+    background: rgba(15, 23, 42, 0.5);
+    border-radius: 0.75rem;
+    overflow: hidden;
+    transition: all 0.2s ease;
+}
+
+.song-card:hover {
+    transform: translateY(-2px);
+    background: rgba(15, 23, 42, 0.6);
+}
+
+.song-rank {
+    position: absolute;
+    top: 0.5rem;
+    left: 0.5rem;
+    background: rgba(0, 0, 0, 0.5);
+    color: white;
+    padding: 0.25rem 0.75rem;
+    border-radius: 9999px;
+    font-weight: 600;
+    font-size: 0.875rem;
+    backdrop-filter: blur(4px);
+    z-index: 10;
+}
+
+.song-cover {
+    position: relative;
+    width: 100%;
+    padding-bottom: 100%;
+    background: rgba(15, 23, 42, 0.8);
+}
+
+.song-cover img {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.song-cover.no-image .upload-placeholder {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: rgba(255, 255, 255, 0.5);
+    font-size: 0.875rem;
+}
+
+.song-info {
+    padding: 1rem;
+}
+
+.song-info input,
+.song-info textarea {
+    width: 100%;
+    background: rgba(15, 23, 42, 0.3);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    color: white;
+    padding: 0.5rem;
+    border-radius: 0.375rem;
+    margin-bottom: 0.5rem;
+    font-size: 0.875rem;
+}
+
+.song-info textarea {
+    min-height: 80px;
+    resize: vertical;
+}
+
+.song-info input:focus,
+.song-info textarea:focus {
+    outline: none;
+    border-color: rgba(59, 130, 246, 0.5);
+    background: rgba(15, 23, 42, 0.4);
+}
+
+.song-actions {
+    display: flex;
+    gap: 0.5rem;
+    margin-top: 1rem;
+}
+
+.btn {
+    padding: 0.5rem 1rem;
+    border-radius: 0.375rem;
+    font-size: 0.875rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.btn-primary {
+    background: #3b82f6;
+    color: white;
+    border: none;
+}
+
+.btn-primary:hover {
+    background: #2563eb;
+}
+
+.btn-secondary {
+    background: rgba(255, 255, 255, 0.1);
+    color: white;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.btn-secondary:hover {
+    background: rgba(255, 255, 255, 0.15);
+}
+</style>
+
+<script>
+function uploadCover(songId) {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = 'image/*';
+    input.onchange = async (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        const formData = new FormData();
+        formData.append('cover', file);
+
+        try {
+            const response = await fetch(`/api/upload_cover/${songId}`, {
+                method: 'POST',
+                body: formData
+            });
+            const data = await response.json();
+            
+            if (response.ok) {
+                // Refresh the page to show the new cover
+                window.location.reload();
+            } else {
+                alert(data.error || 'Failed to upload cover image');
+            }
+        } catch (error) {
+            alert('Error uploading cover image');
+        }
+    };
+    input.click();
+}
+
+// Add event listeners for input changes
+document.querySelectorAll('.song-info input, .song-info textarea').forEach(input => {
+    input.addEventListener('input', function() {
+        const card = this.closest('.song-card');
+        const saveBtn = card.querySelector('.save-changes');
+        const hasChanges = Array.from(card.querySelectorAll('input, textarea')).some(
+            el => el.value !== el.dataset.original
+        );
+        saveBtn.style.display = hasChanges ? 'block' : 'none';
+    });
+});
+
+// Add event listeners for save buttons
+document.querySelectorAll('.save-changes').forEach(button => {
+    button.addEventListener('click', async function() {
+        const card = this.closest('.song-card');
+        const songId = card.id.split('-')[1];
+        const artist = card.querySelector('.song-artist').value;
+        const title = card.querySelector('.song-title').value;
+        const description = card.querySelector('.song-description').value;
+        const link = card.querySelector('.song-link').value;
+
+        try {
+            const response = await fetch(`/api/songs/${songId}`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    artist,
+                    title,
+                    description,
+                    link
+                })
+            });
+
+            if (response.ok) {
+                // Update the original values and hide the save button
+                card.querySelectorAll('input, textarea').forEach(el => {
+                    el.dataset.original = el.value;
+                });
+                this.style.display = 'none';
+                alert('Changes saved successfully!');
+            } else {
+                alert('Failed to save changes');
+            }
+        } catch (error) {
+            alert('Error saving changes');
+        }
+    });
+});
+</script>
+{% endblock %}

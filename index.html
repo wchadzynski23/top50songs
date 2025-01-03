@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Top 50 Songs</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Top 50 Songs</h1>
+            <p class="last-updated">Last updated: {{ current_time.strftime('%B %d, %Y') }}</p>
+            <a href="/admin" class="admin-link">Admin Panel</a>
+        </header>
+
+        <main>
+            <div class="songs-container">
+                {% for song in songs %}
+                <div class="song-card">
+                    <div class="song-rank">#{{ song.rank }}</div>
+                    {% if song.cover_image %}
+                    <div class="song-cover">
+                        <img src="{{ url_for('static', filename='covers/' + song.cover_image) }}" alt="Cover for {{ song.title }}">
+                    </div>
+                    {% endif %}
+                    <div class="song-artist">{{ song.artist }}</div>
+                    <div class="song-title">{{ song.title }}</div>
+                    <div class="song-description">{{ song.description }}</div>
+                    <a href="{{ song.link }}" class="song-link" target="_blank" rel="noopener noreferrer">
+                        Listen on Spotify
+                    </a>
+                </div>
+                {% endfor %}
+            </div>
+        </main>
+
+        <footer>
+            <p>&copy; {{ current_time.year }} Top 50 Songs</p>
+        </footer>
+    </div>
+</body>
+</html>
