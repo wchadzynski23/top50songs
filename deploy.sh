@@ -1,42 +1,47 @@
 #!/bin/bash
 
-# Update system
-sudo apt update
-sudo apt upgrade -y
+# Check if Docker is installed
+if ! command -v docker &> /dev/null; then
+    echo "Docker is not installed. Installing Docker..."
+    curl -fsSL https://get.docker.com -o get-docker.sh
+    sudo sh get-docker.sh
+    sudo usermod -aG docker $USER
+    rm get-docker.sh
+fi
 
-# Install required packages
-sudo apt install python3-pip python3-dev build-essential libssl-dev libffi-dev python3-setuptools python3-venv nginx -y
+# Check if Docker Compose is installed
+if ! command -v docker-compose &> /dev/null; then
+    echo "Docker Compose is not installed. Installing Docker Compose..."
+    sudo curl -L "https://github.com/docker/compose/releases/latest/download/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
+    sudo chmod +x /usr/local/bin/docker-compose
+fi
 
-# Create application directory
-sudo mkdir -p /var/www/top50songs
-sudo chown -R $USER:$USER /var/www/top50songs
+# Create directories for SSL certificates
+mkdir -p certbot/conf certbot/www
 
-# Copy application files
-sudo cp -r * /var/www/top50songs/
+# Update environment variables
+read -p "Enter your domain (e.g., example.com): " DOMAIN
+read -p "Enter your email: " EMAIL
+read -p "Enter a secure secret key (or press enter to generate one): " SECRET_KEY
 
-# Setup virtual environment
-cd /var/www/top50songs
-python3 -m venv venv
-source venv/bin/activate
-pip install -r requirements.txt
-pip install gunicorn
+if [ -z "$SECRET_KEY" ]; then
+    SECRET_KEY=$(openssl rand -hex 32)
+fi
 
-# Setup systemd service
-sudo cp top50songs.service /etc/systemd/system/
-sudo systemctl start top50songs
-sudo systemctl enable top50songs
+# Update configuration files
+sed -i "s/yourdomain.com/$DOMAIN/g" docker-compose.yml nginx.conf
+sed -i "s/your@email.com/$EMAIL/g" docker-compose.yml
+sed -i "s/your-secret-key-change-this/$SECRET_KEY/g" docker-compose.yml
 
-# Setup Nginx
-sudo cp nginx_config /etc/nginx/sites-available/top50songs
-sudo ln -s /etc/nginx/sites-available/top50songs /etc/nginx/sites-enabled
-sudo nginx -t
-sudo systemctl restart nginx
+# Start the application
+docker-compose up -d
 
-# Setup firewall
-sudo ufw allow 'Nginx Full'
-sudo ufw enable
-
-echo "Deployment completed! Don't forget to:"
-echo "1. Update the domain name in /etc/nginx/sites-available/top50songs"
-echo "2. Set up SSL with Certbot"
-echo "3. Update the SECRET_KEY in the application"
+echo "Deployment completed!"
+echo "Your application is now running at https://$DOMAIN"
+echo "Please wait a few minutes for SSL certificate to be generated"
+echo ""
+echo "Default admin credentials:"
+echo "Username: admin"
+echo "Password: admin123"
+echo ""
+echo "IMPORTANT: Change the admin password immediately after first login!"

@@ -5,14 +5,16 @@ from werkzeug.utils import secure_filename
 from werkzeug.security import generate_password_hash, check_password_hash
 from functools import wraps
 from datetime import datetime
+from dotenv import load_dotenv
+
+# Load environment variables
+load_dotenv()
 
 app = Flask(__name__)
 
-# Use environment variables for configuration
-app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'your-secret-key-here')
-app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL', 'sqlite:///songs.db')
-if app.config['SQLALCHEMY_DATABASE_URI'].startswith('postgres://'):
-    app.config['SQLALCHEMY_DATABASE_URI'] = app.config['SQLALCHEMY_DATABASE_URI'].replace('postgres://', 'postgresql://', 1)
+# Configuration
+app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'dev-key-change-this')
+app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv('DATABASE_URL', 'sqlite:///songs.db')
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['UPLOAD_FOLDER'] = os.path.join('static', 'uploads')
 app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16MB max file size
@@ -130,6 +132,30 @@ def admin_settings():
         return redirect(url_for('admin_settings'))
 
     return render_template('admin_settings.html', settings=settings)
+
+@app.route('/admin/change_password', methods=['GET', 'POST'])
+@login_required
+def change_password():
+    if request.method == 'POST':
+        current_password = request.form.get('current_password')
+        new_password = request.form.get('new_password')
+        confirm_password = request.form.get('confirm_password')
+        
+        user = User.query.get(session['user_id'])
+        
+        if not check_password_hash(user.password_hash, current_password):
+            flash('Current password is incorrect', 'error')
+        elif new_password != confirm_password:
+            flash('New passwords do not match', 'error')
+        elif len(new_password) < 8:
+            flash('Password must be at least 8 characters long', 'error')
+        else:
+            user.password_hash = generate_password_hash(new_password)
+            db.session.commit()
+            flash('Password updated successfully', 'success')
+            return redirect(url_for('admin'))
+            
+    return render_template('change_password.html')
 
 @app.route('/api/songs', methods=['GET'])
 def get_songs():
