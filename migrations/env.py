@@ -1,9 +1,14 @@
 from logging.config import fileConfig
 import os
+import sys
 from sqlalchemy import engine_from_config
 from sqlalchemy import pool
 from alembic import context
-from app import db
+
+# Add the project root directory to Python path
+sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
+
+from app import db, Song, User
 
 config = context.config
 
@@ -13,7 +18,10 @@ if config.config_file_name is not None:
 target_metadata = db.metadata
 
 def get_url():
-    return os.getenv("DATABASE_URL")
+    url = os.getenv("DATABASE_URL")
+    if url and url.startswith("postgres://"):
+        url = url.replace("postgres://", "postgresql://", 1)
+    return url or "sqlite:///songs.db"
 
 def run_migrations_offline():
     url = get_url()
