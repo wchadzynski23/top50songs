@@ -7,11 +7,25 @@ from functools import wraps
 from datetime import datetime
 from dotenv import load_dotenv
 import shutil
+from flask_talisman import Talisman
 
 # Load environment variables
 load_dotenv()
 
 app = Flask(__name__)
+
+# Security headers
+Talisman(app,
+         content_security_policy={
+             'default-src': "'self'",
+             'img-src': "'self' data: https:",
+             'script-src': "'self' 'unsafe-inline'",
+             'style-src': "'self' 'unsafe-inline'",
+         },
+         force_https=True,
+         strict_transport_security=True,
+         session_cookie_secure=True,
+         session_cookie_http_only=True)
 
 # Configuration
 app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'dev-key-change-this')
