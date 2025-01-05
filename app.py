@@ -6,6 +6,7 @@ from werkzeug.security import generate_password_hash, check_password_hash
 from functools import wraps
 from datetime import datetime
 from dotenv import load_dotenv
+import shutil
 
 # Load environment variables
 load_dotenv()
@@ -19,12 +20,27 @@ if database_url and database_url.startswith("postgres://"):
     database_url = database_url.replace("postgres://", "postgresql://", 1)
 app.config['SQLALCHEMY_DATABASE_URI'] = database_url
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-app.config['UPLOAD_FOLDER'] = os.path.join('static', 'uploads')
-app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16MB max file size
 
-# Ensure upload directories exist
+# Use persistent storage path if available
+UPLOAD_PATH = os.getenv('UPLOAD_PATH', os.path.join('static', 'uploads'))
+app.config['UPLOAD_FOLDER'] = UPLOAD_PATH
+
+# Ensure upload directories exist and migrate existing files if needed
 os.makedirs(os.path.join(app.config['UPLOAD_FOLDER'], 'covers'), exist_ok=True)
 os.makedirs(os.path.join(app.config['UPLOAD_FOLDER'], 'hero'), exist_ok=True)
+
+# If we're switching to persistent storage, migrate existing files
+default_upload_path = os.path.join('static', 'uploads')
+if UPLOAD_PATH != default_upload_path and os.path.exists(default_upload_path):
+    for subdir in ['covers', 'hero']:
+        src_dir = os.path.join(default_upload_path, subdir)
+        dst_dir = os.path.join(UPLOAD_PATH, subdir)
+        if os.path.exists(src_dir):
+            for filename in os.listdir(src_dir):
+                src_file = os.path.join(src_dir, filename)
+                dst_file = os.path.join(dst_dir, filename)
+                if os.path.isfile(src_file) and not os.path.exists(dst_file):
+                    shutil.copy2(src_file, dst_file)
 
 ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'webp'}
 

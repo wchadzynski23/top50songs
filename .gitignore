@@ -36,14 +36,14 @@ ENV/
 instance/
 .webassets-cache
 *.db
+.env
+.env.*
 
 # Application specific
 static/uploads/*
 !static/uploads/covers/.gitkeep
 !static/uploads/hero/.gitkeep
 *.log
-.env
-.env.*
 
 # Docker
 .docker/
@@ -63,3 +63,12 @@ certbot/
 # System files
 .DS_Store
 Thumbs.db
+
+# SSH Keys
+id_*
+*.pub
+
+# Database
+*.sqlite
+*.sqlite3
+*.db

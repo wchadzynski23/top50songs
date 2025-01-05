@@ -2,10 +2,11 @@ services:
   - type: web
     name: top50songs
     env: python
+    plan: starter
     buildCommand: pip install -r requirements.txt
     startCommand: |
       python -m alembic upgrade head
-      gunicorn app:app
+      gunicorn app:app --workers=2 --threads=4
     envVars:
       - key: PYTHON_VERSION
         value: 3.9.0
@@ -17,13 +18,21 @@ services:
         fromDatabase:
           name: top50songs_db
           property: connectionString
+      - key: UPLOAD_PATH
+        value: /data/uploads
     disk:
-      name: data
+      name: uploads
       mountPath: /data
-      sizeGB: 1
+      sizeGB: 10
+    autoDeploy: false
+    healthCheckPath: /
+    numInstances: 2
 
 databases:
   - name: top50songs_db
     databaseName: top50songs
-    plan: free
+    plan: starter
     ipAllowList: []
+    dailyBackup: true
+    user: top50songs_user
+    version: "14"
