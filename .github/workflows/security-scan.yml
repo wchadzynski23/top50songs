@@ -30,65 +30,82 @@ jobs:
           pip install -r requirements.txt
           pip install bandit safety
 
-      - name: Run Bandit
+      - name: Run Bandit and Convert to SARIF
         run: |
+          # Run bandit and generate JSON output
           bandit -r . -x ./tests,./venv -f json -o bandit-results.json || true
-          echo '{"runs":[{"tool":{"driver":{"name":"bandit","rules":[]}},"results":[]}]}' > bandit.sarif
-          python -c '
-import json
-import sys
-
-def convert_to_sarif(bandit_json):
-    with open(bandit_json) as f:
-        data = json.load(f)
-    
-    sarif = {
-        "$schema": "https://raw.githubusercontent.com/oasis-tcs/sarif-spec/master/Schemata/sarif-schema-2.1.0.json",
-        "version": "2.1.0",
-        "runs": [{
-            "tool": {
-                "driver": {
-                    "name": "Bandit",
-                    "informationUri": "https://github.com/PyCQA/bandit",
-                    "rules": []
-                }
-            },
-            "results": []
-        }]
-    }
-    
-    if "results" in data:
-        for result in data["results"]:
-            sarif_result = {
-                "ruleId": f"B{result.get("test_id")}",
-                "level": "error" if result.get("issue_severity") == "HIGH" else "warning",
-                "message": {
-                    "text": result.get("issue_text", "")
-                },
-                "locations": [{
-                    "physicalLocation": {
-                        "artifactLocation": {
-                            "uri": result.get("filename", "").replace("./", "")
-                        },
-                        "region": {
-                            "startLine": result.get("line_number", 1)
-                        }
-                    }
-                }]
-            }
-            sarif["runs"][0]["results"].append(sarif_result)
-    
-    return sarif
-
-with open("bandit-results.json") as f:
-    try:
-        data = json.load(f)
-        sarif = convert_to_sarif("bandit-results.json")
-        with open("bandit.sarif", "w") as sf:
-            json.dump(sarif, sf, indent=2)
-    except:
-        pass  # Keep the empty SARIF file if conversion fails
-          '
+          
+          # Create Python script for conversion
+          cat > convert.py << 'EOL'
+          import json
+          import sys
+          
+          def convert_to_sarif(bandit_json):
+              with open(bandit_json) as f:
+                  data = json.load(f)
+              
+              sarif = {
+                  "$schema": "https://raw.githubusercontent.com/oasis-tcs/sarif-spec/master/Schemata/sarif-schema-2.1.0.json",
+                  "version": "2.1.0",
+                  "runs": [{
+                      "tool": {
+                          "driver": {
+                              "name": "Bandit",
+                              "informationUri": "https://github.com/PyCQA/bandit",
+                              "rules": []
+                          }
+                      },
+                      "results": []
+                  }]
+              }
+              
+              if "results" in data:
+                  for result in data["results"]:
+                      sarif_result = {
+                          "ruleId": f"B{result.get('test_id')}",
+                          "level": "error" if result.get("issue_severity") == "HIGH" else "warning",
+                          "message": {
+                              "text": result.get("issue_text", "")
+                          },
+                          "locations": [{
+                              "physicalLocation": {
+                                  "artifactLocation": {
+                                      "uri": result.get("filename", "").replace("./", "")
+                                  },
+                                  "region": {
+                                      "startLine": result.get("line_number", 1)
+                                  }
+                              }
+                          }]
+                      }
+                      sarif["runs"][0]["results"].append(sarif_result)
+              
+              return sarif
+          
+          try:
+              sarif = convert_to_sarif("bandit-results.json")
+              with open("bandit.sarif", "w") as f:
+                  json.dump(sarif, f, indent=2)
+          except Exception as e:
+              print(f"Error converting to SARIF: {e}")
+              # Create empty SARIF file as fallback
+              with open("bandit.sarif", "w") as f:
+                  json.dump({
+                      "version": "2.1.0",
+                      "runs": [{
+                          "tool": {
+                              "driver": {
+                                  "name": "bandit",
+                                  "rules": []
+                              }
+                          },
+                          "results": []
+                      }]
+                  }, f, indent=2)
+          EOL
+          
+          # Run the conversion script
+          python convert.py
 
       - name: Upload Security Results
         uses: github/codeql-action/upload-sarif@v3
