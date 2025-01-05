@@ -24,12 +24,12 @@ services:
       sizeGB: 10
     autoDeploy: false
     healthCheckPath: /
-    numInstances: 2
 
 databases:
   - name: top50songs-db
     databaseName: top50songs
     plan: starter
+    region: frankfurt
     ipAllowList: []
     dailyBackup: true
     user: top50songs_user
