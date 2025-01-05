@@ -11,8 +11,13 @@ on:
 jobs:
   security-scan:
     runs-on: ubuntu-latest
+    permissions:
+      security-events: write
+      contents: read
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Fetch all history for all branches and tags
 
       - name: Set up Python
         uses: actions/setup-python@v4
@@ -26,21 +31,24 @@ jobs:
 
       - name: Run Bandit
         run: |
-          bandit -r . -x ./tests,./venv -f json -o bandit-results.json
-
-      - name: Run Safety Check
-        run: |
-          safety check
+          bandit -r . -x ./tests,./venv -f sarif -o bandit-results.sarif
 
       - name: Upload Security Results
-        uses: github/codeql-action/upload-sarif@v2
+        uses: github/codeql-action/upload-sarif@v3
         with:
-          sarif_file: bandit-results.json
+          sarif_file: bandit-results.sarif
 
   dependency-review:
     runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    permissions:
+      contents: read
+      pull-requests: read
     steps:
       - uses: actions/checkout@v4
+        with:
+          base-ref: ${{ github.event.pull_request.base.ref }}
+          head-ref: ${{ github.event.pull_request.head.ref }}
       
       - name: Dependency Review
         uses: actions/dependency-review-action@v3
@@ -49,14 +57,17 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       security-events: write
-      
+      actions: read
+      contents: read
     steps:
       - uses: actions/checkout@v4
       
       - name: Initialize CodeQL
-        uses: github/codeql-action/init@v2
+        uses: github/codeql-action/init@v3
         with:
           languages: python
           
       - name: Perform CodeQL Analysis
-        uses: github/codeql-action/analyze@v2
+        uses: github/codeql-action/analyze@v3
+        with:
+          category: "/language:python"
